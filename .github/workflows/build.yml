@@ -1,39 +1,11 @@
-name: Build TvLauncher
-
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
-      - name: Распаковать исходники
-        run: |
-          rm -rf build_src
-          mkdir build_src
-          unzip -q tvlauncher-src.zip -d build_src
-
-      - name: Собрать APK
-        working-directory: build_src
-        run: gradle assembleDebug --no-daemon --stacktrace
-
-      - name: Переименовать APK
-        run: cp build_src/app/build/outputs/apk/debug/app-debug.apk TvLauncher.apk
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: TvLauncher-apk
-          path: TvLauncher.apk
+{"name": "Build TvLauncher",
+"on": {"push": {"branches": ["main", "master"]}, "workflow_dispatch": {}},
+"jobs": {"build": {"runs-on": "ubuntu-latest", "steps": [
+{"uses": "actions/checkout@v4"},
+{"uses": "actions/setup-java@v4", "with": {"distribution": "temurin", "java-version": "17"}},
+{"uses": "gradle/actions/setup-gradle@v4", "with": {"gradle-version": "8.9"}},
+{"name": "Unpack", "run": "rm -rf build_src && mkdir build_src && unzip -q tvlauncher-src.zip -d build_src"},
+{"name": "Build", "working-directory": "build_src", "run": "gradle assembleDebug --no-daemon --stacktrace"},
+{"name": "Rename", "run": "cp build_src/app/build/outputs/apk/debug/app-debug.apk TvLauncher.apk"},
+{"uses": "actions/upload-artifact@v4", "with": {"name": "TvLauncher-apk", "path": "TvLauncher.apk"}}
+]}}}
