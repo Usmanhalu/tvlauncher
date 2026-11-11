@@ -1,21 +1,39 @@
-name: Build APK
-on: [push, workflow_dispatch]
+name: Build TvLauncher
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: unzip -o TvLauncher.zip
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
+
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.7"
-      - run: gradle assembleDebug
-        working-directory: TvLauncher
+          gradle-version: '8.9'
+
+      - name: Распаковать исходники
+        run: |
+          rm -rf build_src
+          mkdir build_src
+          unzip -q tvlauncher-src.zip -d build_src
+
+      - name: Собрать APK
+        working-directory: build_src
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Переименовать APK
+        run: cp build_src/app/build/outputs/apk/debug/app-debug.apk TvLauncher.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: TvLauncher-apk
-          path: TvLauncher/app/build/outputs/apk/debug/app-debug.apk
+          path: TvLauncher.apk
