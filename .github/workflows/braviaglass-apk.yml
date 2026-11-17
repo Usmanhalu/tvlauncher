@@ -45,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f BraviaGlass-public-source.zip || { echo 'Upload BraviaGlass-public-source.zip to the repository root first'; exit 1; }
-          if unzip -Z1 BraviaGlass-public-source.zip | grep -Ei '(^|/)signing/|\\.(jks|keystore|p12)$'; then
+          if unzip -Z1 BraviaGlass-public-source.zip | grep -Ei '(^|/)signing/|\.(jks|keystore|p12)$'; then
             echo 'Refusing source archive containing a private signing key'
             exit 1
           fi
