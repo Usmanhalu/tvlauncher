@@ -120,7 +120,7 @@ jobs:
           retention-days: 30
 
       - name: Publish online update to GitHub Releases
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && github.event.head_commit.message == 'Publish BraviaGlass v1.3.2 as an online update')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
