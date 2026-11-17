@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'BraviaGlass-public-source.zip'
+      - '.github/workflows/braviaglass-apk.yml'
   workflow_dispatch:
     inputs:
       publish_release:
@@ -34,11 +35,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Configure Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android API 35 and build tools
-        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Configure Android SDK from GitHub runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${ANDROID_HOME:?Android SDK is not installed on the GitHub runner}"
+          command -v sdkmanager
+          sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt2"
 
       - name: Extract public source archive
         shell: bash
