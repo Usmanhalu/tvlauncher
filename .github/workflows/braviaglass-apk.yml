@@ -1,5 +1,5 @@
 name: BraviaGlass — signed APK
-# Release v1.3.5: verified signed test artifact 14366332769; SHA256 65ca38c783936f09f6d6c08dc27bfd5ca2f14f68cc33eb32d8cc3418c12a8532
+# Release v1.3.5: verified signed test artifact 14366649908; SHA256 4ec0f0da4980b5514bb3c212d149b961dc0fde6915fc958144e1a225f7d2e4a8
 
 on:
   push:
