@@ -1,0 +1,114 @@
+name: BraviaGlass — signed APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'BraviaGlass-public-source.zip'
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish signed v1.3.1 APK as a GitHub Release (only after testing)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: braviaglass-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout public repository
+        uses: actions/checkout@v4
+
+      - name: Configure Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API 35 and build tools
+        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Extract public source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f BraviaGlass-public-source.zip || { echo 'Upload BraviaGlass-public-source.zip to the repository root first'; exit 1; }
+          if unzip -Z1 BraviaGlass-public-source.zip | grep -Ei '(^|/)signing/|\\.(jks|keystore|p12)$'; then
+            echo 'Refusing source archive containing a private signing key'
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/braviaglass"
+          unzip -q BraviaGlass-public-source.zip -d "$RUNNER_TEMP/braviaglass"
+          test -f "$RUNNER_TEMP/braviaglass/BraviaGlass/tools/build-native.py"
+          test -f "$RUNNER_TEMP/braviaglass/BraviaGlass/app/build.gradle"
+          echo "PROJECT_DIR=$RUNNER_TEMP/braviaglass/BraviaGlass" >> "$GITHUB_ENV"
+
+      - name: Restore signing key from private GitHub Secrets
+        shell: bash
+        env:
+          BRAVIA_KEYSTORE_BASE64: ${{ secrets.BRAVIA_KEYSTORE_BASE64 }}
+          BRAVIA_SIGNING_PASSWORD: ${{ secrets.BRAVIA_SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$BRAVIA_KEYSTORE_BASE64" || { echo 'Missing secret BRAVIA_KEYSTORE_BASE64'; exit 1; }
+          test -n "$BRAVIA_SIGNING_PASSWORD" || { echo 'Missing secret BRAVIA_SIGNING_PASSWORD'; exit 1; }
+          mkdir -p "$PROJECT_DIR/signing"
+          printf '%s' "$BRAVIA_KEYSTORE_BASE64" | base64 -d > "$PROJECT_DIR/signing/bravia-glass.jks"
+          chmod 600 "$PROJECT_DIR/signing/bravia-glass.jks"
+          fingerprint="$(keytool -list -v -keystore "$PROJECT_DIR/signing/bravia-glass.jks" -storepass:env BRAVIA_SIGNING_PASSWORD -alias braviaglass | grep -m1 'SHA256:' | sed -E 's/.*SHA256:[[:space:]]*//' | tr -d '[:space:]:' | tr '[:upper:]' '[:lower:]')"
+          expected='6c4b04a1c738036e429da4f925d6e6440e34de71c4c7df279e020cfe08706be6'
+          test "$fingerprint" = "$expected" || { echo 'Signing certificate does not match installed BraviaGlass 1.3.0'; exit 1; }
+          echo 'Verified original BraviaGlass signing certificate.'
+
+      - name: Build signed BraviaGlass v1.3.1
+        working-directory: ${{ env.PROJECT_DIR }}
+        env:
+          BRAVIA_SIGNING_PASSWORD: ${{ secrets.BRAVIA_SIGNING_PASSWORD }}
+        run: python3 tools/build-native.py
+
+      - name: Verify APK and generate checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$PROJECT_DIR/app/build/native-release/BraviaGlass-1.3.1.apk"
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk" | tee "$RUNNER_TEMP/apk-verify.txt"
+          grep -qi '6c4b04a1c738036e429da4f925d6e6440e34de71c4c7df279e020cfe08706be6' "$RUNNER_TEMP/apk-verify.txt"
+          (cd "$(dirname "$apk")" && sha256sum "$(basename "$apk")" > "$(basename "$apk").sha256")
+
+      - name: Downloadable signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BraviaGlass-1.3.1-APK
+          path: |
+            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.3.1.apk
+            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.3.1.apk.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish online update to GitHub Releases
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag='v1.3.1'
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to replace a published version.'
+            exit 1
+          fi
+          dir="$PROJECT_DIR/app/build/native-release"
+          gh release create "$tag" "$dir/BraviaGlass-1.3.1.apk" "$dir/BraviaGlass-1.3.1.apk.sha256" --repo "$GITHUB_REPOSITORY" --title 'BraviaGlass 1.3.1' --notes 'Sony Android TV — in-launcher updater, original BraviaGlass signing certificate, preserves existing data. Install over BraviaGlass 1.3.0.'
