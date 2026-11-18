@@ -1,5 +1,5 @@
 name: BraviaGlass — signed APK
-# BraviaGlass v1.4.0 Dynamic World and Pet Companion - build/test before publication
+# BraviaGlass 1.4.0 signed test run 44384293484 passed, 5 scenes and panda sprite asset verified
 
 on:
   push:
@@ -254,4 +254,4 @@ jobs:
             exit 1
           fi
           dir="$PROJECT_DIR/app/build/native-release"
-          gh release create "$tag" "$dir/BraviaGlass-1.4.0.apk" "$dir/BraviaGlass-1.4.0.apk.sha256" --repo "$GITHUB_REPOSITORY" --title 'BraviaGlass 1.4.0' --notes 'Sony Android TV — in-launcher updater, original BraviaGlass signing certificate, preserves existing data. Install over BraviaGlass 1.3.10. Dynamic World: five time-of-day lake scenes, automatic/optional manual background selection; small 2D and volumetric-style 3D animated pet companions, character and behaviour choices, corrected fully-visible app dock. Preserves Sony controls, Sajda, clock, menus, profiles and signature.'
+          gh release create "$tag" "$dir/BraviaGlass-1.4.0.apk" "$dir/BraviaGlass-1.4.0.apk.sha256" --repo "$GITHUB_REPOSITORY" --title 'BraviaGlass 1.4.0' --notes 'Sony Android TV — in-launcher updater, original BraviaGlass signing certificate, preserves existing data. Install over BraviaGlass 1.3.10. Dynamic World: five time-of-day lake scenes, automatic/optional manual background selection; small 2D and shaded pre-rendered 3D-style animated pets, character and behaviour choices, corrected fully-visible app dock. Preserves Sony controls, Sajda, clock, menus, profiles and signature.'
