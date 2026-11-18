@@ -26,7 +26,7 @@ def frame(pose):
         d=ImageDraw.Draw(canvas,"RGBA")
         d.line([(int(x*s),int(y*s)) for x,y in points],fill=color,width=int(width*s),joint="curve")
     sleepy=pose==5; leap=pose==2; wave=pose in (3,4); yawn=pose==6; peek=pose==7
-    xshift=pose==1?13:0
+    xshift=13 if pose==1 else 0
     cy=17 if leap else 29
     # Soft ground shadow
     if not leap:
