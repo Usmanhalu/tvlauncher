@@ -18,6 +18,7 @@ on:
       - 'scripts/patch_braviaglass_1_3_10.py'
       - 'scripts/patch_braviaglass_1_4_0.py'
       - 'scripts/build_dynamic_scenes.py'
+      - 'scripts/build_pet_assets.py'
       - 'assets/sunset-premium-part*.b64'
   workflow_dispatch:
     inputs:
@@ -186,10 +187,12 @@ jobs:
           set -euo pipefail
           python3 -m pip install --disable-pip-version-check --quiet pillow
           python3 scripts/build_dynamic_scenes.py "$PROJECT_DIR"
+          python3 scripts/build_pet_assets.py "$PROJECT_DIR"
           python3 scripts/patch_braviaglass_1_4_0.py "$PROJECT_DIR"
           for scene in morning noon sunset evening night; do
             test -s "$PROJECT_DIR/app/src/main/assets/dynamic-scenes/$scene.webp"
           done
+          test -s "$PROJECT_DIR/app/src/main/assets/pet-panda-3d.webp"
           grep -q 'class PetCompanion' "$PROJECT_DIR/app/src/main/java/com/usman/braviaglass/PetCompanion.java"
           grep -q 'void petSettings()' "$PROJECT_DIR/app/src/main/java/com/usman/braviaglass/MainActivity.java"
           grep -q "versionCode 22" "$PROJECT_DIR/app/build.gradle"
