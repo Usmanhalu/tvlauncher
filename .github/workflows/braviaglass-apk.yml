@@ -1,5 +1,5 @@
 name: BraviaGlass — signed APK
-# BraviaGlass v1.3.6: source fix without modifying the stored signing keys
+# BraviaGlass v1.3.6: signed artifact 14409085091 passed Android API35 compilation and signature verification
 
 on:
   push:
