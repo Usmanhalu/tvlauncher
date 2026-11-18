@@ -1,0 +1,55 @@
+name: Inspect BraviaGlass 1.4 implementation points
+on:
+  push:
+    paths: ['.github/workflows/inspect-bravia-140.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct native launcher source
+        run: |
+          set -euo pipefail
+          unzip -q BraviaGlass-public-source.zip -d /tmp/bravia
+          PROJ=/tmp/bravia/BraviaGlass
+          python3 scripts/patch_braviaglass_1_3_2.py "$PROJ"
+          python3 scripts/patch_braviaglass_1_3_3.py "$PROJ"
+          python3 - <<'PY'
+          import pathlib,base64,zlib
+          for v in ('1_3_4','1_3_5'):
+            s=pathlib.Path('scripts/patch_braviaglass_'+v+'.py.zlib.b64').read_text().strip()
+            pathlib.Path('/tmp/p'+v+'.py').write_bytes(zlib.decompress(base64.b64decode(s)))
+          PY
+          python3 /tmp/p1_3_4.py "$PROJ"
+          python3 /tmp/p1_3_5.py "$PROJ"
+          for v in 6 7 8 9 10; do
+            python3 scripts/patch_braviaglass_1_3_$v.py "$PROJ"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          d=Path('/tmp/bravia/BraviaGlass/app/src/main/java/com/usman/braviaglass')
+          specs={
+            'MainActivity.java':['void settings(', 'void chooseCity(', 'void openSettings(', 'void appMenu(', 'void toggle', 'void choice(', 'void style(', 'void onCreate(', 'void loadApps(', 'void settingsMenu(', 'void choose', 'View settings(', 'void page(', 'void pick', 'void openWeather('],
+            'GlassView.java':['void onDraw(', 'void draw(', 'void home(', 'void drawHome(', 'void activate(', 'void open(', 'void refresh(', 'void navigate(', 'void notifyText(', 'boolean ambient(', 'void drawPrayers(', 'void drawPremium', 'void drawControl('],
+            'ColorHome.java':['void draw(', 'void header(', 'void dock(', 'void navigate(', 'void drawPremiumPrayers(', 'void background('],
+            'Store.java':['class Store', 'void put(', 'int number(', 'boolean bool(', 'String text('],
+          }
+          for file,patterns in specs.items():
+            lines=(d/file).read_text().splitlines()
+            matches=[i for i,l in enumerate(lines) if any(t in l for t in patterns)]
+            print('######',file,'lines',len(lines),'matches',matches,'######')
+            intervals=[]
+            for idx in matches:
+              a=max(0,idx-8);b=min(len(lines),idx+75)
+              if intervals and intervals[-1][1]>=a: intervals[-1]=(intervals[-1][0],max(b,intervals[-1][1]))
+              else:intervals.append((a,b))
+            total=0
+            for a,b in intervals:
+              if total>700:break
+              print('------',file,'L',a+1,b,'------')
+              for i in range(a,b):
+                print(f'{i+1:04d}: {lines[i]}')
+                total+=1
+          PY
