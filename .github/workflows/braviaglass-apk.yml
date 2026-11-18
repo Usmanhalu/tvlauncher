@@ -1,5 +1,5 @@
 name: BraviaGlass — signed APK
-# Release v1.3.5: verified signed test artifact 14366649908; SHA256 4ec0f0da4980b5514bb3c212d149b961dc0fde6915fc958144e1a225f7d2e4a8
+# BraviaGlass v1.3.6: source fix without modifying the stored signing keys
 
 on:
   push:
@@ -11,10 +11,11 @@ on:
       - 'scripts/patch_braviaglass_1_3_3.py'
       - 'scripts/patch_braviaglass_1_3_4.py.zlib.b64'
       - 'scripts/patch_braviaglass_1_3_5.py.zlib.b64'
+      - 'scripts/patch_braviaglass_1_3_6.py'
   workflow_dispatch:
     inputs:
       publish_release:
-        description: 'Publish signed v1.3.5 APK as a GitHub Release (only after testing)'
+        description: 'Publish signed v1.3.6 APK as a GitHub Release (only after testing)'
         required: false
         type: boolean
         default: false
@@ -70,7 +71,7 @@ jobs:
           test -f "$RUNNER_TEMP/braviaglass/BraviaGlass/app/build.gradle"
           echo "PROJECT_DIR=$RUNNER_TEMP/braviaglass/BraviaGlass" >> "$GITHUB_ENV"
 
-      - name: Patch home navigation, updater and app dock (v1.3.5)
+      - name: Patch home navigation, updater and app dock (v1.3.6)
         shell: bash
         run: |
           set -euo pipefail
@@ -92,7 +93,7 @@ jobs:
           grep -q "versionCode 15" "$PROJECT_DIR/app/build.gradle"
           grep -q "versionName '1.3.4'" "$PROJECT_DIR/app/build.gradle"
 
-      - name: Apply BraviaGlass v1.3.5 fixes
+      - name: Apply BraviaGlass v1.3.6 fixes
         shell: bash
         run: |
           set -euo pipefail
@@ -109,6 +110,16 @@ jobs:
           grep -q 'void launchTvTimer()' "$PROJECT_DIR/app/src/main/java/com/usman/braviaglass/GlassView.java"
           grep -q "versionCode 16" "$PROJECT_DIR/app/build.gradle"
           grep -q "versionName '1.3.5'" "$PROJECT_DIR/app/build.gradle"
+
+      - name: Fix Sony sources and layout (v1.3.6)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_braviaglass_1_3_6.py "$PROJECT_DIR"
+          grep -q 'TvContract.buildChannelUriForPassthroughInput' "$PROJECT_DIR/app/src/main/java/com/usman/braviaglass/MainActivity.java"
+          grep -q 'host.tvSettings()' "$PROJECT_DIR/app/src/main/java/com/usman/braviaglass/GlassView.java"
+          grep -q "versionCode 17" "$PROJECT_DIR/app/build.gradle"
+          grep -q "versionName '1.3.6'" "$PROJECT_DIR/app/build.gradle"
 
       - name: Restore signing key from private GitHub Secrets
         shell: bash
@@ -127,7 +138,7 @@ jobs:
           test "$fingerprint" = "$expected" || { echo 'Signing certificate does not match installed BraviaGlass 1.3.0'; exit 1; }
           echo 'Verified original BraviaGlass signing certificate.'
 
-      - name: Build signed BraviaGlass v1.3.5
+      - name: Build signed BraviaGlass v1.3.6
         working-directory: ${{ env.PROJECT_DIR }}
         env:
           BRAVIA_SIGNING_PASSWORD: ${{ secrets.BRAVIA_SIGNING_PASSWORD }}
@@ -137,7 +148,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          apk="$PROJECT_DIR/app/build/native-release/BraviaGlass-1.3.5.apk"
+          apk="$PROJECT_DIR/app/build/native-release/BraviaGlass-1.3.6.apk"
           test -s "$apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk" | tee "$RUNNER_TEMP/apk-verify.txt"
           grep -qi '6c4b04a1c738036e429da4f925d6e6440e34de71c4c7df279e020cfe08706be6' "$RUNNER_TEMP/apk-verify.txt"
@@ -146,24 +157,24 @@ jobs:
       - name: Downloadable signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: BraviaGlass-1.3.5-APK
+          name: BraviaGlass-1.3.6-APK
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.3.5.apk
-            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.3.5.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.3.6.apk
+            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.3.6.apk.sha256
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish online update to GitHub Releases
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && github.event.head_commit.message == 'Publish BraviaGlass v1.3.5 as an online update')
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && github.event.head_commit.message == 'Publish BraviaGlass v1.3.6 as an online update')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag='v1.3.5'
+          tag='v1.3.6'
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo 'Release already exists; refusing to replace a published version.'
             exit 1
           fi
           dir="$PROJECT_DIR/app/build/native-release"
-          gh release create "$tag" "$dir/BraviaGlass-1.3.5.apk" "$dir/BraviaGlass-1.3.5.apk.sha256" --repo "$GITHUB_REPOSITORY" --title 'BraviaGlass 1.3.4' --notes 'Sony Android TV — in-launcher updater, original BraviaGlass signing certificate, preserves existing data. Install over BraviaGlass 1.3.4. Softer accent light, independent Timer and screen-saver timer shortcuts, fixed Add application picker, prayer times and profiles preserved.'
+          gh release create "$tag" "$dir/BraviaGlass-1.3.6.apk" "$dir/BraviaGlass-1.3.6.apk.sha256" --repo "$GITHUB_REPOSITORY" --title 'BraviaGlass 1.3.6' --notes 'Sony Android TV — in-launcher updater, original BraviaGlass signing certificate, preserves existing data. Install over BraviaGlass 1.3.5. Sony HDMI input picker, separate device settings icon, date/weather under clock, launcher settings icon-only. Prayer times, profiles and favorite apps preserved.'
