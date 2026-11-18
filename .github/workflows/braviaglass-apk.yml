@@ -1,5 +1,5 @@
 name: BraviaGlass — signed APK
-# BraviaGlass v1.3.6: signed artifact 14409085091 passed Android API35 compilation and signature verification
+# BraviaGlass v1.3.7: adaptive-glass popup build
 
 on:
   push:
@@ -12,10 +12,11 @@ on:
       - 'scripts/patch_braviaglass_1_3_4.py.zlib.b64'
       - 'scripts/patch_braviaglass_1_3_5.py.zlib.b64'
       - 'scripts/patch_braviaglass_1_3_6.py'
+      - 'scripts/patch_braviaglass_1_3_7.py'
   workflow_dispatch:
     inputs:
       publish_release:
-        description: 'Publish signed v1.3.6 APK as a GitHub Release (only after testing)'
+        description: 'Publish signed v1.3.7 APK as a GitHub Release (only after testing)'
         required: false
         type: boolean
         default: false
@@ -121,6 +122,17 @@ jobs:
           grep -q "versionCode 17" "$PROJECT_DIR/app/build.gradle"
           grep -q "versionName '1.3.6'" "$PROJECT_DIR/app/build.gradle"
 
+      - name: Apply frosted-glass UI v1.3.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_braviaglass_1_3_7.py "$PROJECT_DIR"
+          grep -q 'class GlassTheme' "$PROJECT_DIR/app/src/main/java/com/usman/braviaglass/GlassTheme.java"
+          grep -q 'GlassTheme.popup(glass)' "$PROJECT_DIR/app/src/main/java/com/usman/braviaglass/MainActivity.java"
+          grep -q 'mutedGlassTint' "$PROJECT_DIR/app/src/main/java/com/usman/braviaglass/GlassView.java"
+          grep -q "versionCode 18" "$PROJECT_DIR/app/build.gradle"
+          grep -q "versionName '1.3.7'" "$PROJECT_DIR/app/build.gradle"
+
       - name: Restore signing key from private GitHub Secrets
         shell: bash
         env:
@@ -148,7 +160,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          apk="$PROJECT_DIR/app/build/native-release/BraviaGlass-1.3.6.apk"
+          apk="$PROJECT_DIR/app/build/native-release/BraviaGlass-1.3.7.apk"
           test -s "$apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk" | tee "$RUNNER_TEMP/apk-verify.txt"
           grep -qi '6c4b04a1c738036e429da4f925d6e6440e34de71c4c7df279e020cfe08706be6' "$RUNNER_TEMP/apk-verify.txt"
@@ -157,24 +169,24 @@ jobs:
       - name: Downloadable signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: BraviaGlass-1.3.6-APK
+          name: BraviaGlass-1.3.7-APK
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.3.6.apk
-            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.3.6.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.3.7.apk
+            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.3.7.apk.sha256
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish online update to GitHub Releases
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && github.event.head_commit.message == 'Publish BraviaGlass v1.3.6 as an online update')
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && github.event.head_commit.message == 'Publish BraviaGlass v1.3.7 as an online update')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag='v1.3.6'
+          tag='v1.3.7'
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo 'Release already exists; refusing to replace a published version.'
             exit 1
           fi
           dir="$PROJECT_DIR/app/build/native-release"
-          gh release create "$tag" "$dir/BraviaGlass-1.3.6.apk" "$dir/BraviaGlass-1.3.6.apk.sha256" --repo "$GITHUB_REPOSITORY" --title 'BraviaGlass 1.3.6' --notes 'Sony Android TV — in-launcher updater, original BraviaGlass signing certificate, preserves existing data. Install over BraviaGlass 1.3.5. Sony HDMI input picker, separate device settings icon, date/weather under clock, launcher settings icon-only. Prayer times, profiles and favorite apps preserved.'
+          gh release create "$tag" "$dir/BraviaGlass-1.3.7.apk" "$dir/BraviaGlass-1.3.7.apk.sha256" --repo "$GITHUB_REPOSITORY" --title 'BraviaGlass 1.3.7' --notes 'Sony Android TV — in-launcher updater, original BraviaGlass signing certificate, preserves existing data. Install over BraviaGlass 1.3.6. Frosted adaptive glass for BraviaGlass-owned menus and dialogs, Wi-Fi summary, settings and control panel; Sony external settings and Timer retain native UI. Prayer times, profiles and favorites preserved.'
