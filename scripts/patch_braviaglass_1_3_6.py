@@ -50,7 +50,7 @@ replace(M,
             android.media.tv.TvInputInfo info=ports.get(n);
             String label="";
             try{
-                CharSequence name=info.loadLabel(getPackageManager());
+                CharSequence name=info.loadLabel(this);
                 if(name!=null)label=name.toString().trim();
             }catch(RuntimeException ignored){}
             if(label.isEmpty()){
