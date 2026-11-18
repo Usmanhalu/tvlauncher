@@ -1,5 +1,5 @@
 name: BraviaGlass — signed APK
-# BraviaGlass 1.4.1: night pet Canvas restoration fix, shelf visibility and interaction animation
+# BraviaGlass 1.4.1: signed candidate run 44388416976 passed build, signature verification and UI regression guards
 
 on:
   push:
