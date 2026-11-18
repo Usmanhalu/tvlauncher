@@ -39,6 +39,12 @@ jobs:
             'ColorHome.java':['void draw(', 'void top', 'void topButton(', 'void onKey', 'void key(', 'void weather(', 'void handle'],
             'ScenicHome.java':['void draw(', 'void softHalo(', 'void top'],
           }
+          for name,(a,b) in {'MainActivity.java':(1,94),'GlassView.java':(180,480),'ColorHome.java':(1,49)}.items():
+            path=base/name
+            lines=path.read_text().splitlines()
+            print(f'========== TARGETED {name} L{a}-{b} ==========')
+            for i in range(a-1,min(len(lines),b)):
+              print(f'{i+1:04d}: {lines[i]}')
           for name,searches in patterns.items():
             path=base/name
             if not path.exists():continue
