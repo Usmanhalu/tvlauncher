@@ -1,5 +1,5 @@
 name: BraviaGlass — signed APK
-# BraviaGlass 1.4.0 signed test run 44384293484 passed, 5 scenes and panda sprite asset verified
+# BraviaGlass 1.4.1: night pet Canvas restoration fix, shelf visibility and interaction animation
 
 on:
   push:
@@ -17,13 +17,14 @@ on:
       - 'scripts/patch_braviaglass_1_3_9.py'
       - 'scripts/patch_braviaglass_1_3_10.py'
       - 'scripts/patch_braviaglass_1_4_0.py'
+      - 'scripts/patch_braviaglass_1_4_1.py'
       - 'scripts/build_dynamic_scenes.py'
       - 'scripts/build_pet_assets.py'
       - 'assets/sunset-premium-part*.b64'
   workflow_dispatch:
     inputs:
       publish_release:
-        description: 'Publish signed v1.4.0 APK as a GitHub Release (only after testing)'
+        description: 'Publish signed v1.4.1 APK as a GitHub Release (only after testing)'
         required: false
         type: boolean
         default: false
@@ -198,6 +199,29 @@ jobs:
           grep -q "versionCode 22" "$PROJECT_DIR/app/build.gradle"
           grep -q "versionName '1.4.0'" "$PROJECT_DIR/app/build.gradle"
 
+      - name: Fix pet Canvas state and night animation (v1.4.1)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_braviaglass_1_4_1.py "$PROJECT_DIR"
+          python3 - <<'PY'
+          import pathlib,os
+          root=pathlib.Path(os.environ["PROJECT_DIR"])
+          p=(root/"app/src/main/java/com/usman/braviaglass/PetCompanion.java").read_text()
+          h=(root/"app/src/main/java/com/usman/braviaglass/ColorHome.java").read_text()
+          assert "canvas.restoreToCount(saveLevel)" in p, "Missing Canvas save/restore guard"
+          assert "if(pose==5){c.save();" not in p, "Night pose still leaks Canvas state"
+          assert "SystemClock.elapsedRealtime()-view.host.lastInteraction>90000" in p, "Night sleep still permanently freezes characters"
+          assert "dock(c);\n        pet.draw(c);" in h, "Pet should render on top of dock"
+          assert "int visible=Math.max(1" in h, "Dock visibility logic regressed"
+          assert "new RectF(x,754" in h, "Dock vertical layout regressed"
+          assert (root/"app/src/main/assets/pet-panda-3d.webp").stat().st_size>3000
+          assert all((root/f"app/src/main/assets/dynamic-scenes/{key}.webp").exists() for key in ("morning","noon","sunset","evening","night"))
+          print("All UI and pet-regression invariants passed")
+          PY
+          grep -q "versionCode 23" "$PROJECT_DIR/app/build.gradle"
+          grep -q "versionName '1.4.1'" "$PROJECT_DIR/app/build.gradle"
+
       - name: Restore signing key from private GitHub Secrets
         shell: bash
         env:
@@ -215,7 +239,7 @@ jobs:
           test "$fingerprint" = "$expected" || { echo 'Signing certificate does not match installed BraviaGlass 1.3.0'; exit 1; }
           echo 'Verified original BraviaGlass signing certificate.'
 
-      - name: Build signed BraviaGlass v1.4.0
+      - name: Build signed BraviaGlass v1.4.1
         working-directory: ${{ env.PROJECT_DIR }}
         env:
           BRAVIA_SIGNING_PASSWORD: ${{ secrets.BRAVIA_SIGNING_PASSWORD }}
@@ -225,7 +249,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          apk="$PROJECT_DIR/app/build/native-release/BraviaGlass-1.4.0.apk"
+          apk="$PROJECT_DIR/app/build/native-release/BraviaGlass-1.4.1.apk"
           test -s "$apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk" | tee "$RUNNER_TEMP/apk-verify.txt"
           grep -qi '6c4b04a1c738036e429da4f925d6e6440e34de71c4c7df279e020cfe08706be6' "$RUNNER_TEMP/apk-verify.txt"
@@ -234,24 +258,24 @@ jobs:
       - name: Downloadable signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: BraviaGlass-1.4.0-APK
+          name: BraviaGlass-1.4.1-APK
           path: |
-            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.4.0.apk
-            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.4.0.apk.sha256
+            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.4.1.apk
+            ${{ env.PROJECT_DIR }}/app/build/native-release/BraviaGlass-1.4.1.apk.sha256
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish online update to GitHub Releases
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && github.event.head_commit.message == 'Publish BraviaGlass v1.4.0 as an online update')
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish_release == true) || (github.event_name == 'push' && github.event.head_commit.message == 'Publish BraviaGlass v1.4.1 as an online update')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag='v1.4.0'
+          tag='v1.4.1'
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo 'Release already exists; refusing to replace a published version.'
             exit 1
           fi
           dir="$PROJECT_DIR/app/build/native-release"
-          gh release create "$tag" "$dir/BraviaGlass-1.4.0.apk" "$dir/BraviaGlass-1.4.0.apk.sha256" --repo "$GITHUB_REPOSITORY" --title 'BraviaGlass 1.4.0' --notes 'Sony Android TV — in-launcher updater, original BraviaGlass signing certificate, preserves existing data. Install over BraviaGlass 1.3.10. Dynamic World: five time-of-day lake scenes, automatic/optional manual background selection; small 2D and shaded pre-rendered 3D-style animated pets, character and behaviour choices, corrected fully-visible app dock. Preserves Sony controls, Sajda, clock, menus, profiles and signature.'
+          gh release create "$tag" "$dir/BraviaGlass-1.4.1.apk" "$dir/BraviaGlass-1.4.1.apk.sha256" --repo "$GITHUB_REPOSITORY" --title 'BraviaGlass 1.4.1' --notes 'Sony Android TV — in-launcher updater, original BraviaGlass signing certificate, preserves existing data. Install over BraviaGlass 1.4.0 without clearing data. Fix Canvas-state leak when 2D/3D pet sleeps at night that hid the app dock. Pet now stays visible over the dock, walks the shelf, uses more active poses while remote is in use, sleeps after night inactivity. Five daily scenes, all character choices, Sajda, input controls, profiles and all other settings are preserved. Preserves Sony controls, Sajda, clock, menus, profiles and signature.'
