@@ -1,5 +1,5 @@
 name: BraviaGlass — signed APK
-# BraviaGlass v1.3.8: Adaptive Sunset UI and automatic installed-app icon colours
+# BraviaGlass v1.3.8: signed build 44284820871 passed compile, original certificate and asset checks
 
 on:
   push:
