@@ -1,5 +1,5 @@
 name: BraviaGlass — signed APK
-# BraviaGlass v1.3.7: adaptive-glass popup build
+# BraviaGlass v1.3.7: signed build 44265213178 passed compile and certificate checks
 
 on:
   push:
@@ -150,7 +150,7 @@ jobs:
           test "$fingerprint" = "$expected" || { echo 'Signing certificate does not match installed BraviaGlass 1.3.0'; exit 1; }
           echo 'Verified original BraviaGlass signing certificate.'
 
-      - name: Build signed BraviaGlass v1.3.6
+      - name: Build signed BraviaGlass v1.3.7
         working-directory: ${{ env.PROJECT_DIR }}
         env:
           BRAVIA_SIGNING_PASSWORD: ${{ secrets.BRAVIA_SIGNING_PASSWORD }}
