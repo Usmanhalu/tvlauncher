@@ -120,6 +120,17 @@ rep(M,
                     });break;
             }
         });''')
+rep(M,
+'''                r.add(toggle("Фон с горами и закатом","sunsetBackground",true));''',
+'''                r.add(toggle("Фон с горами и закатом","sunsetBackground",true));
+                r.add(row("Своя фотография для заката","Выбрать JPG или PNG · оттенок сохранится",()->{
+                    store.put("look","ambient");pick(PICK_WALLPAPER);
+                }));''')
+rep(M,
+'''if(request==PICK_WALLPAPER){store.put("wallpaper",saved);store.put("look","classic");loadWallpaper();}''',
+'''if(request==PICK_WALLPAPER){store.put("wallpaper",saved);
+                    if(!store.text("look","ambient").equals("ambient"))store.put("look","classic");
+                    loadWallpaper();}''')
 rep(B,"versionCode 18","versionCode 19")
 rep(B,"versionName '1.3.7'","versionName '1.3.8'")
 g=(src/"GlassView.java").read_text(encoding="utf-8")
