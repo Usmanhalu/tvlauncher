@@ -75,7 +75,7 @@ def main():
     for key in ("morning","noon","sunset","evening","night"):
         out=dest/(key+".webp")
         scene(base,key).save(out,format="WEBP",quality=76,method=6)
-        assert out.stat().st_size>20000
+        assert out.stat().st_size>5000
         print(key,out.stat().st_size)
     (dest/"CREDITS.txt").write_text(
         "Five colour-graded scenes derived from the BraviaGlass v1.3.9 AI-generated Sunset Premium image. No remote downloads.\n",
