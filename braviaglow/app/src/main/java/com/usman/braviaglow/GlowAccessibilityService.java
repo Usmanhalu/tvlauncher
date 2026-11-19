@@ -15,6 +15,9 @@ import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -38,6 +41,12 @@ public final class GlowAccessibilityService extends AccessibilityService {
     private boolean overlayAdded;
     private final Map<String,Integer> apps = new LinkedHashMap<>();
     private String lastLabel = "";
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable hideDemo = this::hideOverlay;
+    private long lastDebugAt = 0;
+    private int homeEvents = 0;
+    private long lastContentProbe = 0;
+    private boolean demoRunning = false;
 
     @Override protected void onServiceConnected() {
         super.onServiceConnected();
@@ -50,10 +59,12 @@ public final class GlowAccessibilityService extends AccessibilityService {
                 hideOverlay();
             }
             if ("intensity".equals(key) && glowView != null) glowView.invalidate();
+            if ("demo_sequence".equals(key)) showDemo();
         };
         prefs.registerOnSharedPreferenceChangeListener(listener);
         prefs.edit().putBoolean("service_connected",true)
-            .putString("last_event","Служба обнаружена. Эксперимент выключен до вашего разрешения.").apply();
+            .putInt("home_events",0)
+            .putString("last_event","Служба подключена. Проверьте тестовую подсветку.").apply();
         // Do not attach an overlay to the screen until a real app icon is focused.
         // No key filters, touch exploration, gestures or global actions are requested.
     }
@@ -77,12 +88,22 @@ public final class GlowAccessibilityService extends AccessibilityService {
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event == null || prefs == null) return;
-        if (!prefs.getBoolean("experimental_enabled",false)) {
-            hideOverlay();
-            return;
-        }
         String pkg = event.getPackageName() == null ? "" : event.getPackageName().toString();
         int type = event.getEventType();
+        if (HOME.equals(pkg) && type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            homeEvents++;
+            long now = SystemClock.uptimeMillis();
+            if (now - lastDebugAt > 350) {
+                lastDebugAt = now;
+                prefs.edit().putInt("home_events", homeEvents)
+                    .putString("last_event_type", AccessibilityEvent.eventTypeToString(type)).apply();
+            }
+        }
+        if (!prefs.getBoolean("experimental_enabled",false)) {
+            // Diagnostic event counter works even in safe mode, without drawing.
+            if (!demoRunning) hideOverlay();
+            return;
+        }
 
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             if (!HOME.equals(pkg) &&
@@ -94,12 +115,31 @@ public final class GlowAccessibilityService extends AccessibilityService {
         }
         if (!HOME.equals(pkg)) return;
         if (type != AccessibilityEvent.TYPE_VIEW_FOCUSED &&
-            type != AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED) return;
+            type != AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED &&
+            type != AccessibilityEvent.TYPE_VIEW_SELECTED &&
+            type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return;
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
+            SystemClock.uptimeMillis()-lastContentProbe < 400) return;
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+            lastContentProbe = SystemClock.uptimeMillis();
 
         try {
             AccessibilityNodeInfo source = event.getSource();
             String label = matchAppLabel(source,event);
             Integer tint = resolveColor(label);
+            if (tint == null) {
+                AccessibilityNodeInfo root = getRootInActiveWindow();
+                if (root != null) {
+                    AccessibilityNodeInfo focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+                    if (focused == null)
+                        focused = root.findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
+                    if (focused != null) {
+                        String found = matchAppLabel(focused,event);
+                        Integer matched = resolveColor(found);
+                        if (matched != null) { label=found; tint=matched; }
+                    }
+                }
+            }
             if (tint == null) {
                 // Avoid painting a blue tint while focus is on search or menu items.
                 // Save diagnostics to distinguish no events from unknown TV icon names.
@@ -232,6 +272,23 @@ public final class GlowAccessibilityService extends AccessibilityService {
             Log.w(TAG,"Overlay not supported",e);
         }
     }
+    private void showDemo() {
+        if (glowView == null) return;
+        demoRunning = true;
+        handler.removeCallbacks(hideDemo);
+        ensureOverlay();
+        if (overlayAdded) {
+            glowView.animateTo(Color.rgb(235,44,52),
+                getResources().getDisplayMetrics().widthPixels * .50f);
+            prefs.edit().putString("last_event",
+                "Красный градиент показан — тест слоя выполнен").apply();
+        } else {
+            prefs.edit().putString("last_event",
+                "Тест слоя не удался: Android не разрешил оверлей").apply();
+        }
+        handler.postDelayed(() -> { demoRunning=false; hideOverlay(); }, 2200);
+    }
+
     private void hideOverlay() {
         if (!overlayAdded) return;
         try {
@@ -244,6 +301,7 @@ public final class GlowAccessibilityService extends AccessibilityService {
 
     @Override public void onInterrupt() {hideOverlay();}
     @Override public void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
         hideOverlay();
         if(prefs!=null) {
             if(listener!=null) prefs.unregisterOnSharedPreferenceChangeListener(listener);

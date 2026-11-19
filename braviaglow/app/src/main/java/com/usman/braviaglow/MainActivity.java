@@ -36,7 +36,7 @@ public final class MainActivity extends Activity {
         scroll.addView(outer);
         setContentView(scroll);
 
-        addText("BraviaGlow 0.3 · для Sony",32,Color.WHITE);
+        addText("BraviaGlow 0.4 · диагностика Sony",32,Color.WHITE);
         addText("Оригинальный Android TV Home остаётся без изменений.",20,0xffd2e8f4);
         addText("Важное изменение: цветной эффект выключен по умолчанию. Сначала проверь короткое нажатие OK без эффекта.",17,0xffc0d0df);
 
@@ -62,8 +62,19 @@ public final class MainActivity extends Activity {
             refresh();
         });
         status=addText("",18,0xffe4f3ff);
+        addButton("Проверить красный градиент (2 секунды)",()->{
+            if (!prefs.getBoolean("service_connected",false)) {
+                new AlertDialog.Builder(this).setTitle("Служба не подключена")
+                    .setMessage("Включи службу BraviaGlow в специальных возможностях Sony. Пока служба не подключена, тестовый градиент показать невозможно.")
+                    .setPositiveButton("Понятно",(d,w)->{}).show();
+                return;
+            }
+            prefs.edit().putInt("demo_sequence",prefs.getInt("demo_sequence",0)+1).apply();
+            refresh();
+        });
         addButton("Проверить состояние",this::refresh);
         addText("Как активировать: Настройки Sony → Настройки устройства → Специальные возможности → BraviaGlow. Если пункта нет, использование ADB — только с вашего разрешения. Эта кнопка не пытается открыть неподдерживаемые настройки.",16,0xffa9c0d5);
+        addText("Если красный градиент работает, но событий Sony Home по-прежнему 0 — проблема в распознавании фокуса, а не в цветном слое.",16,0xffb8d3e3);
         addText("Приложение не перехватывает кнопки пульта и не вызывает действия с интерфейсом. Но сама служба специальных возможностей на старом Sony может повлиять на поведение OK.",16,0xffa9c0d5);
         addButton("Закрыть BraviaGlow",this::finish);
         refresh();
@@ -77,6 +88,8 @@ public final class MainActivity extends Activity {
         String detail=prefs.getString("last_event","Пока нет событий от Sony Home");
         boolean connected=prefs.getBoolean("service_connected",false);
         status.setText("Служба: "+(connected?"подключена":"не подключена")+
+            "\nСобытий от Sony Home: "+prefs.getInt("home_events",0)+
+            "\nПоследний тип: "+prefs.getString("last_event_type","нет")+
             "\nПоследнее событие: "+detail);
     }
     @Override protected void onResume(){super.onResume();if(status!=null)refresh();}
