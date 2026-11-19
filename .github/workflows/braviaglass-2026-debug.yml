@@ -1,8 +1,8 @@
-name: BraviaGlass 2026 v1.0.2 install compatibility APK
+name: BraviaGlass 2026 v1.0.3 Weather & City TV APK
 on:
   push:
     branches:
-      - braviaglass-2026
+      - braviaglass-2026-v103
     paths:
       - 'braviaglass2026/**'
       - '.github/workflows/braviaglass-2026-debug.yml'
@@ -42,15 +42,16 @@ jobs:
           echo "5fe6e813a9a8b6b734db2375d8b731b0ccb26436d281122657e2ea88ff8af922  source.tar.xz" | sha256sum -c -
           tar -xJf source.tar.xz
           test -f app/src/main/java/com/braviaglass/tv/LauncherActivity.java
-      - name: Separate installable test package from old launcher
-        working-directory: braviaglass2026/workdir
+      - name: Apply verified BraviaGlass v1.0.3 source changes
         shell: bash
         run: |
-          sed -i "s/applicationId 'com.braviaglass.tv'/applicationId 'com.braviaglass.tv2026'/" app/build.gradle
-          sed -i "s/versionCode 2/versionCode 3/; s/versionName '1.0.1'/versionName '1.0.2'/" app/build.gradle
-          sed -i 's/com.braviaglass.tv.updates/com.braviaglass.tv2026.updates/; s/BraviaGlass 2026"/BraviaGlass 2026 Test"/' app/src/main/AndroidManifest.xml
-          grep -F "applicationId 'com.braviaglass.tv2026'" app/build.gradle
-          grep -F 'com.braviaglass.tv2026.updates' app/src/main/AndroidManifest.xml
+          base64 -d braviaglass2026/overrides_v103.b64 > braviaglass2026/workdir/overrides.tar.xz
+          cd braviaglass2026/workdir
+          echo 'ebe029336f363f661fd13583a3279bf68e18f4d1cbe21680c2a0306ec4392929  overrides.tar.xz' | sha256sum -c -
+          tar -xJf overrides.tar.xz
+          grep -F "applicationId 'com.braviaglass.tv2026.v103'" app/build.gradle
+          grep -F 'com.braviaglass.tv2026.v103.updates' app/src/main/AndroidManifest.xml
+          grep -F '"Махачкала"' app/src/main/java/com/braviaglass/tv/LauncherActivity.java
       - name: Build APK
         working-directory: braviaglass2026/workdir
         run: gradle --no-daemon :app:assembleDebug
@@ -60,11 +61,11 @@ jobs:
       - name: Verify output APK
         run: |
           test -s braviaglass2026/workdir/app/build/outputs/apk/debug/app-debug.apk
-          sha256sum braviaglass2026/workdir/app/build/outputs/apk/debug/app-debug.apk > braviaglass2026/workdir/BraviaGlass2026-v1.0.2-sha256.txt
+          sha256sum braviaglass2026/workdir/app/build/outputs/apk/debug/app-debug.apk > braviaglass2026/workdir/BraviaGlass2026-v1.0.3-sha256.txt
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: BraviaGlass2026-v1.0.2-debug
+          name: BraviaGlass2026-v1.0.3-debug
           path: |
             braviaglass2026/workdir/app/build/outputs/apk/debug/app-debug.apk
             braviaglass2026/workdir/BraviaGlass2026-v1.0.1-sha256.txt
