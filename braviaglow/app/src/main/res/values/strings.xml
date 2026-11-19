@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BraviaGlow</string>
+    <string name="service_name">BraviaGlow — цветная подсветка Sony</string>
+    <string name="service_description">Следит за выбором приложения на главном экране Sony и отображает слабый прозрачный цветной градиент. Не управляет телевизором и не передаёт данные в интернет.</string>
+</resources>
