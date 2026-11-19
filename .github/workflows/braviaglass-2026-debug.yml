@@ -20,10 +20,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Set up Android tools
-        uses: android-actions/setup-android@v3
-      - name: Android SDK 35
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Android SDK 35 (preinstalled runner tools)
+        shell: bash
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKMANAGER="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools" -name sdkmanager -type f | sort -V | tail -1)"
+          test -n "$SDKMANAGER"
+          echo "SDK Manager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
       - name: Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
         with:
