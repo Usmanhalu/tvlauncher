@@ -1,8 +1,8 @@
-name: BraviaGlass 2026 v1.0.3 Weather & City TV APK
+name: BraviaGlass 2026 v1.0.4 rotating scenic wallpapers TV APK
 on:
   push:
     branches:
-      - braviaglass-2026-v103
+      - braviaglass-2026-v104
     paths:
       - 'braviaglass2026/**'
       - '.github/workflows/braviaglass-2026-debug.yml'
@@ -52,6 +52,19 @@ jobs:
           grep -F "applicationId 'com.braviaglass.tv2026.v103'" app/build.gradle
           grep -F 'com.braviaglass.tv2026.v103.updates' app/src/main/AndroidManifest.xml
           grep -F '"Махачкала"' app/src/main/java/com/braviaglass/tv/LauncherActivity.java
+      - name: Apply rotating offline scenic wallpapers
+        shell: bash
+        run: |
+          cp braviaglass2026/SceneView_v104.java.txt braviaglass2026/workdir/app/src/main/java/com/braviaglass/tv/SceneView.java
+          cd braviaglass2026/workdir
+          python3 ../patch_v104.py
+          mkdir -p app/src/main/assets
+          curl -fLsS --retry 3 --max-time 65 'https://images.unsplash.com/photo-1603979649806-5299879db16b?auto=format&fit=crop&w=1280&h=720&q=72' -o app/src/main/assets/wallpaper_lake.jpg
+          curl -fLsS --retry 3 --max-time 65 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1280&h=720&q=72' -o app/src/main/assets/wallpaper_coast.jpg
+          curl -fLsS --retry 3 --max-time 65 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1280&h=720&q=72' -o app/src/main/assets/wallpaper_city.jpg
+          curl -fLsS --retry 3 --max-time 65 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1280&h=720&q=72' -o app/src/main/assets/wallpaper_forest.jpg
+          for f in app/src/main/assets/wallpaper_*.jpg; do test "$(wc -c < "$f")" -gt 5000; done
+          grep -F "versionName '1.0.4'" app/build.gradle
       - name: Build APK
         working-directory: braviaglass2026/workdir
         run: gradle --no-daemon :app:assembleDebug
@@ -61,12 +74,12 @@ jobs:
       - name: Verify output APK
         run: |
           test -s braviaglass2026/workdir/app/build/outputs/apk/debug/app-debug.apk
-          sha256sum braviaglass2026/workdir/app/build/outputs/apk/debug/app-debug.apk > braviaglass2026/workdir/BraviaGlass2026-v1.0.3-sha256.txt
+          sha256sum braviaglass2026/workdir/app/build/outputs/apk/debug/app-debug.apk > braviaglass2026/workdir/BraviaGlass2026-v1.0.4-sha256.txt
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: BraviaGlass2026-v1.0.3-debug
+          name: BraviaGlass2026-v1.0.4-debug
           path: |
             braviaglass2026/workdir/app/build/outputs/apk/debug/app-debug.apk
-            braviaglass2026/workdir/BraviaGlass2026-v1.0.1-sha256.txt
+            braviaglass2026/workdir/BraviaGlass2026-v1.0.4-sha256.txt
           if-no-files-found: error
