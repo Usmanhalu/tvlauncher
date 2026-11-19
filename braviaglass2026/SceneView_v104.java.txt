@@ -1,0 +1,67 @@
+package com.braviaglass.tv;
+
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.RadialGradient;
+import android.graphics.Shader;
+import android.view.View;
+
+/** Offline photo wallpaper: decoded once when selected; no continuous animation. */
+public final class SceneView extends View {
+    private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private int accent=Color.rgb(55,127,180);
+    private int scene=-1;
+    private Bitmap bitmap;
+    private static final String[] WALLPAPERS={"wallpaper_lake.jpg","wallpaper_coast.jpg","wallpaper_city.jpg","wallpaper_forest.jpg"};
+    SceneView(Context c){super(c);setLayerType(View.LAYER_TYPE_HARDWARE,null);}
+    void setAccent(int c){accent=c;invalidate();}
+    void setScene(int s){
+        int next=Math.floorMod(s,WALLPAPERS.length);
+        if(scene==next)return;
+        scene=next;
+        Bitmap previous=bitmap;
+        bitmap=null;
+        try{
+            BitmapFactory.Options opts=new BitmapFactory.Options();
+            opts.inPreferredConfig=Bitmap.Config.RGB_565;
+            opts.inScaled=false;
+            try(java.io.InputStream stream=getContext().getAssets().open(WALLPAPERS[next])){
+                bitmap=BitmapFactory.decodeStream(stream,null,opts);
+            }
+        }catch(Exception ignored){}
+        if(previous!=null && !previous.isRecycled())previous.recycle();
+        invalidate();
+    }
+    @Override protected void onDraw(Canvas canvas){
+        int w=getWidth(),h=getHeight();if(w<=0||h<=0)return;
+        if(bitmap!=null && !bitmap.isRecycled()){
+            int bw=bitmap.getWidth(),bh=bitmap.getHeight();
+            float ratio=Math.max((float)w/bw,(float)h/bh);
+            int sw=Math.max(1,Math.round(w/ratio)),sh=Math.max(1,Math.round(h/ratio));
+            int l=(bw-sw)/2,t=(bh-sh)/2;
+            paint.setShader(null);paint.setColor(Color.WHITE);
+            canvas.drawBitmap(bitmap,new Rect(l,t,l+sw,t+sh),new Rect(0,0,w,h),paint);
+        }else{
+            paint.setShader(new LinearGradient(0,0,w,h,0xFF061323,0xFF1A344B,Shader.TileMode.CLAMP));
+            canvas.drawRect(0,0,w,h,paint);paint.setShader(null);
+            paint.setShader(new RadialGradient(w*.72f,h*.32f,w*.55f,
+                new int[]{Color.argb(120,Color.red(accent),Color.green(accent),Color.blue(accent)),Color.TRANSPARENT},
+                null,Shader.TileMode.CLAMP));
+            canvas.drawRect(0,0,w,h,paint);paint.setShader(null);
+        }
+        paint.setShader(new LinearGradient(0,0,w,0,0xB9000713,0x12000713,Shader.TileMode.CLAMP));
+        canvas.drawRect(0,0,w,h,paint);paint.setShader(null);
+        paint.setShader(new LinearGradient(0,h*.56f,0,h,0x08000712,0xEC020813,Shader.TileMode.CLAMP));
+        canvas.drawRect(0,0,w,h,paint);paint.setShader(null);
+    }
+    @Override protected void onDetachedFromWindow(){
+        super.onDetachedFromWindow();
+        if(bitmap!=null && !bitmap.isRecycled()){bitmap.recycle();bitmap=null;}
+    }
+}
