@@ -232,27 +232,29 @@ public final class GlowAccessibilityService extends AccessibilityService {
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             int w = getWidth(), h = getHeight();
-            if (w == 0 || h == 0) return;
-            SharedPreferences settings = getSharedPreferences("glow", MODE_PRIVATE);
-            int level = settings.getInt("intensity", 1);
-            int strength = level == 0 ? 40 : level == 1 ? 70 : 110;
-            int r=Color.red(tint), g=Color.green(tint), b=Color.blue(tint);
+            if (w <= 0 || h <= 0) return;
+
+            // One continuous full-screen wash. The previous two clipped bands
+            // left a dark horizontal stripe across the center of Sony Home.
+            // Low alpha preserves text, applications, and TV contrast.
+            int level = getSharedPreferences("glow", MODE_PRIVATE).getInt("intensity", 1);
+            int strength = level == 0 ? 28 : level == 1 ? 49 : 73;
+            int r = Color.red(tint), g = Color.green(tint), b = Color.blue(tint);
             float cx = w * centerX;
-            // Only tint quiet background areas. Never draw an opaque panel over app icons.
-            canvas.save();
-            canvas.clipRect(0, 0, w, h * 0.43f);
-            paint.setShader(new RadialGradient(cx, h*.09f, w*.67f,
-                new int[]{Color.argb(strength,r,g,b), Color.argb(strength/3,r,g,b), Color.TRANSPARENT},
-                new float[]{0f, .47f, 1f}, Shader.TileMode.CLAMP));
-            canvas.drawRect(0,0,w,h*.43f,paint);
-            canvas.restore();
-            canvas.save();
-            canvas.clipRect(0,h*.86f,w,h);
-            paint.setShader(new RadialGradient(cx,h*.95f,w*.55f,
-                new int[]{Color.argb(strength/2,r,g,b),Color.TRANSPARENT},
-                new float[]{0f,1f}, Shader.TileMode.CLAMP));
-            canvas.drawRect(0,h*.86f,w,h,paint);
-            canvas.restore();
+
+            // Tint is strongest near the selected app and fades in all
+            // directions without any rectangular clipping or hard edges.
+            float radius = (float) Math.hypot(w, h) * 0.91f;
+            paint.setShader(new RadialGradient(cx, h * 0.47f, radius,
+                new int[]{
+                    Color.argb(strength, r, g, b),
+                    Color.argb(Math.round(strength * .69f), r, g, b),
+                    Color.argb(Math.round(strength * .30f), r, g, b),
+                    Color.TRANSPARENT
+                },
+                new float[]{0f, .38f, .70f, 1f},
+                Shader.TileMode.CLAMP));
+            canvas.drawRect(0, 0, w, h, paint);
             paint.setShader(null);
         }
     }

@@ -40,8 +40,8 @@ public class MainActivity extends Activity {
         scroller.addView(base);
         setContentView(scroller);
 
-        text("BraviaGlow · Тест 0.1", 34, 0xffffffff);
-        text("Мягкий цвет при выборе приложения в оригинальном Sony Android TV Home.", 20, 0xffd4e5f2);
+        text("BraviaGlow · Тест 0.2", 34, 0xffffffff);
+        text("Плавный градиент без тёмных полос на оригинальном Sony Android TV Home.", 20, 0xffd4e5f2);
         text("Это дополнение, НЕ новый лаунчер. Никаких изменений системных файлов и root.", 17, 0xff8ca4bb);
         addButton("1. Включить BraviaGlow в специальных возможностях", () -> {
             Intent i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
