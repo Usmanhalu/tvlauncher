@@ -1,0 +1,54 @@
+name: BraviaGlass 2026 v1.0.1 Android TV Debug APK
+on:
+  push:
+    branches:
+      - braviaglass-2026
+    paths:
+      - 'braviaglass2026/**'
+      - '.github/workflows/braviaglass-2026-debug.yml'
+  workflow_dispatch:
+jobs:
+  android-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android tools
+        uses: android-actions/setup-android@v3
+      - name: Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Reconstruct and verify v1.0.1 source archive
+        shell: bash
+        run: |
+          mkdir -p braviaglass2026/workdir
+          cat braviaglass2026/payload_0{1..7}.b64 | base64 -d > braviaglass2026/workdir/source.tar.xz
+          cd braviaglass2026/workdir
+          echo "5fe6e813a9a8b6b734db2375d8b731b0ccb26436d281122657e2ea88ff8af922  source.tar.xz" | sha256sum -c -
+          tar -xJf source.tar.xz
+          test -f app/src/main/java/com/braviaglass/tv/LauncherActivity.java
+      - name: Build APK
+        working-directory: braviaglass2026/workdir
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Verify output APK
+        run: |
+          test -s braviaglass2026/workdir/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum braviaglass2026/workdir/app/build/outputs/apk/debug/app-debug.apk > braviaglass2026/workdir/BraviaGlass2026-v1.0.1-sha256.txt
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BraviaGlass2026-v1.0.1-debug
+          path: |
+            braviaglass2026/workdir/app/build/outputs/apk/debug/app-debug.apk
+            braviaglass2026/workdir/BraviaGlass2026-v1.0.1-sha256.txt
+          if-no-files-found: error
